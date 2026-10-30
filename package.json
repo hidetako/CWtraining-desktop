@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "CW 交信トレーニング（Windows スタンドアロン版）。Web 版 hidetako/CWtraining を Electron で包んだもの",
   "author": "hidetako (JK0ASS)",
+  "license": "MIT",
   "private": true,
   "main": "src/main.js",
   "homepage": "https://github.com/hidetako/CWtraining-desktop",

@@ -73,3 +73,7 @@ Actions の「Run workflow」で「Release を作る」にチェックを入れ�
 - 外のリンク（説明書など）は既定のブラウザで開きます。カンニングペーパーは別の窓で開きます
 - マイク・画面の音・位置情報の許可は、このアプリの画面からの求めだけ通します
 - インストーラーは [electron-builder](https://www.electron.build/) の NSIS 形式（ユーザー単位・インストール先を選べる）と Portable 形式
+
+## ライセンス
+
+[MIT License](LICENSE)。Web 版 [hidetako/CWtraining](https://github.com/hidetako/CWtraining) も MIT です。
