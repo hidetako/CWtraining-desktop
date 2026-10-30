@@ -58,17 +58,14 @@ npm run dist             # dist/ に Setup と Portable の exe を作る（Wind
 ### 新しい版を出す
 
 1. Web 版（CWtraining）の main に出したい内容が入っていることを確かめる
-2. `package.json` の `version` を上げて commit する
-3. タグを打って push する:
-   ```
-   git tag v1.0.1
-   git push origin main --tags
-   ```
-4. GitHub Actions（`.github/workflows/build.yml`）が Windows で組み立て、
-   Releases に `CWtraining-Setup-1.0.1.exe` と `CWtraining-Portable-1.0.1.exe` を添付します
+2. `package.json` の `version` を上げて commit し、main に push する
+3. GitHub の **Actions → build → Run workflow** で、「Release を作る」にチェックを入れて走らせる
+4. Windows で組み立てられ、`v<version>` のタグが打たれて、Releases に
+   `CWtraining-Setup-<version>.exe` と `CWtraining-Portable-<version>.exe` が添付されます
 
-タグを打たずに試したいときは、Actions の「build」→「Run workflow」で、取り込む Web 版の
-枝やタグを指定して走らせると、Artifacts に exe が置かれます（14 日間）。
+タグを手で打って push しても同じことが起きます（`git tag v1.0.1 && git push origin v1.0.1`）。
+「Release を作る」にチェックを入れずに走らせると、Release は作らず Artifacts に exe と
+起動確認の画面写真が置かれます（14 日間）。取り込む Web 版の枝やタグもそこで選べます。
 
 ## 仕組み
 
