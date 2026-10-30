@@ -1,15 +1,17 @@
 # Windows 用のインストーラーを組み立てる。
 #
-# - タグ v1.2.3 を push すると、その時点の Web 版（CWtraining の main）を取り込んで
-#   組み立て、GitHub Release に exe を添付する
-# - 「Run workflow」（手動）では、取り込む Web 版の枝・タグを選べる。
-#   できた exe は Artifacts に 14 日置かれる。「Release を作る」にチェックを
-#   入れると、package.json の version でタグ（v1.2.3）を打って Release に添付する
-#   （タグを手で push できない環境からでも版を出せるように）
+# 版の出し方は 3 つ。どれも、その時点の Web 版（CWtraining の main）を取り込んで組み立てる
+# - main に push する: package.json の version のタグ（v1.2.3）がまだ無ければ、
+#   タグを打って GitHub Release に exe を添付する。既にあれば Artifacts に置くだけ
+#   （version を上げて push すれば、それが新しい版になる）
+# - タグ v1.2.3 を push する: そのタグで Release を作る
+# - 「Run workflow」（手動）: 取り込む Web 版の枝・タグを選べる。「Release を作る」に
+#   チェックを入れると package.json の version でタグを打って Release に添付する
 name: build
 
 on:
   push:
+    branches: ['main']
     tags: ['v*']
   workflow_dispatch:
     inputs:
@@ -38,10 +40,33 @@ jobs:
 
       - run: npm ci
 
-      - name: 版の番号
+      - name: 版の番号と、Release を作るかどうか
         id: ver
         shell: bash
-        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          REF_NAME: ${{ github.ref_name }}
+          WANT_RELEASE: ${{ github.event.inputs.release }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          tag="v$version"
+          release=false
+          if [[ "$REF" == refs/tags/v* ]]; then
+            tag="$REF_NAME"; release=true
+          elif [[ "$EVENT" == workflow_dispatch && "$WANT_RELEASE" == true ]]; then
+            release=true
+          elif [[ "$EVENT" == push && "$REF" == refs/heads/main ]]; then
+            if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+              echo "タグ $tag は既にあるので Release は作らない（Artifacts のみ）"
+            else
+              release=true
+            fi
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "version=$version tag=$tag release=$release"
 
       - name: Web 版を取り込む
         env:
@@ -72,11 +97,11 @@ jobs:
           retention-days: 14
 
       - name: Release に添付する
-        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release == 'true'
+        if: steps.ver.outputs.release == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', steps.ver.outputs.version) }}
-          name: CW 交信トレーニング ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', steps.ver.outputs.version) }}
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: CW 交信トレーニング ${{ steps.ver.outputs.tag }}
           files: dist/*.exe
           generate_release_notes: true
           body_path: app/VERSION.json
