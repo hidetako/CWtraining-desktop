@@ -1,0 +1,78 @@
+{
+  "name": "cwtraining-desktop",
+  "productName": "CWtraining",
+  "version": "1.0.0",
+  "description": "CW 交信トレーニング（Windows スタンドアロン版）。Web 版 hidetako/CWtraining を Electron で包んだもの",
+  "author": "hidetako (JK0ASS)",
+  "private": true,
+  "main": "src/main.js",
+  "homepage": "https://github.com/hidetako/CWtraining-desktop",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hidetako/CWtraining-desktop.git"
+  },
+  "scripts": {
+    "fetch-app": "node scripts/fetch-app.mjs",
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win --publish never",
+    "check": "node scripts/check.mjs"
+  },
+  "build": {
+    "appId": "jp.jk0ass.cwtraining",
+    "productName": "CWtraining",
+    "copyright": "hidetako (JK0ASS)",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "app/**/*",
+      "!app/**/*.map"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "executableName": "CWtraining",
+      "artifactName": "CWtraining-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CW 交信トレーニング",
+      "artifactName": "CWtraining-Setup-${version}.${ext}",
+      "installerLanguages": [
+        "ja_JP",
+        "en_US"
+      ],
+      "language": "1041",
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "CWtraining-Portable-${version}.${ext}"
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.1.0",
+    "electron-builder": "^26.18.0",
+    "playwright-core": "^1.64.1"
+  }
+}

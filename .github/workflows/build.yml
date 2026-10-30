@@ -1,0 +1,69 @@
+# Windows 用のインストーラーを組み立てる。
+#
+# - タグ v1.2.3 を push すると、その時点の Web 版（CWtraining の main）を取り込んで
+#   組み立て、GitHub Release に exe を添付する
+# - 「Run workflow」（手動）では、取り込む Web 版の枝・タグを選べる。
+#   できた exe は Artifacts に 14 日置かれる（Release は作らない）
+name: build
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      app_ref:
+        description: '取り込む Web 版（CWtraining）の枝・タグ・commit'
+        default: 'main'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Web 版を取り込む
+        env:
+          APP_REF: ${{ github.event.inputs.app_ref || 'main' }}
+        run: node scripts/fetch-app.mjs
+
+      - name: 起動して確かめる（画面・ドリル・設定の保存・リンク）
+        env:
+          SHOTS: shots
+        run: |
+          mkdir shots
+          npm run check
+
+      - name: インストーラーを組み立てる
+        run: npm run dist
+
+      - name: 組み立てた物の一覧
+        shell: bash
+        run: ls -la dist/*.exe && cat app/VERSION.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWtraining-windows
+          path: |
+            dist/*.exe
+            app/VERSION.json
+            shots/*.png
+          retention-days: 14
+
+      - name: Release に添付する
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.exe
+          generate_release_notes: true
+          body_path: app/VERSION.json
