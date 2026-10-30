@@ -83,9 +83,27 @@ jobs:
       - name: インストーラーを組み立てる
         run: npm run dist
 
-      - name: 組み立てた物の一覧
+      - name: 組み立てた物の一覧と Release の説明文
         shell: bash
-        run: ls -la dist/*.exe && cat app/VERSION.json
+        run: |
+          ls -la dist/*.exe && cat app/VERSION.json
+          node -e '
+            const v = require("./app/VERSION.json");
+            const short = (v.commit || "").slice(0, 7);
+            const lines = [
+              `Windows 用のスタンドアロン版です。Web 版（hidetako/CWtraining）の ${short ? `commit ${short}` : "最新"}${v.date ? `（${v.date}）` : ""} を取り込んでいます。`,
+              "",
+              "| ファイル | 使い方 |",
+              "|---|---|",
+              "| `CWtraining-Setup-*.exe` | インストーラー。スタートメニューとデスクトップに「CW 交信トレーニング」が入ります |",
+              "| `CWtraining-Portable-*.exe` | インストール不要。そのまま実行できます |",
+              "",
+              "初回は SmartScreen の警告が出ます（コード署名なし）。「詳細情報」→「実行」で進めてください。",
+              short ? `\n取り込んだ Web 版: https://github.com/hidetako/CWtraining/commit/${v.commit}` : "",
+            ];
+            require("fs").writeFileSync("release-notes.md", lines.join("\n") + "\n");
+          '
+          cat release-notes.md
 
       - uses: actions/upload-artifact@v4
         with:
@@ -104,4 +122,4 @@ jobs:
           name: CW 交信トレーニング ${{ steps.ver.outputs.tag }}
           files: dist/*.exe
           generate_release_notes: true
-          body_path: app/VERSION.json
+          body_path: release-notes.md
