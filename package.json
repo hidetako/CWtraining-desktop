@@ -1,7 +1,7 @@
 {
   "name": "cwtraining-desktop",
   "productName": "CWtraining",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "CW 交信トレーニング（Windows スタンドアロン版）。Web 版 hidetako/CWtraining を Electron で包んだもの",
   "author": "hidetako (JK0ASS)",
   "license": "MIT",
