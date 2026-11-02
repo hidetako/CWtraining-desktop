@@ -7,7 +7,7 @@
 'use strict';
 
 const {
-  app, BrowserWindow, Menu, dialog, desktopCapturer, net, protocol, session, shell, nativeImage,
+  app, BrowserWindow, Menu, dialog, desktopCapturer, ipcMain, net, protocol, session, shell, nativeImage,
 } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -175,9 +175,26 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+/** 画面の「Windows 版（デスクトップ）」の欄からの頼みごと（preload の橋の裏側） */
+function wireDesktopBridge() {
+  const fromApp = (e) => typeof e.senderFrame?.url === 'string' && e.senderFrame.url.startsWith(APP_ORIGIN + '/');
+  ipcMain.handle('cw:desktop-info', (e) => (fromApp(e) ? updater.desktopInfo(appVersionInfo()) : null));
+  ipcMain.handle('cw:check-updates', (e) => { if (fromApp(e)) updater.checkForUpdates({ manual: true, silent: true }); });
+  ipcMain.handle('cw:install-update', (e) => (fromApp(e) ? updater.installUpdate() : false));
+  ipcMain.handle('cw:set-check-on-startup', (e, on) => { if (fromApp(e)) updater.saveSettings({ ...updater.loadSettings(), checkOnStartup: !!on }); });
+  ipcMain.handle('cw:open-releases', (e) => { if (fromApp(e)) shell.openExternal(RELEASES_URL); });
+  // 更新の進み具合は開いている窓すべてに流す
+  updater.events.on('status', (status) => {
+    for (const w of BrowserWindow.getAllWindows()) {
+      if (!w.isDestroyed()) w.webContents.send('cw:update-status', status);
+    }
+  });
+}
+
 app.whenReady().then(() => {
   serveApp();
   allowMedia();
+  wireDesktopBridge();
   buildMenu();
   createWindow();
   updater.scheduleStartupCheck();

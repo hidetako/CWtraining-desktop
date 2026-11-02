@@ -50,6 +50,19 @@ await page.click('.tab[data-panel="settings"]');
 await page.waitForTimeout(300);
 const call = await page.inputValue('#set-callsign').catch(() => '');
 ok('自局の初期値が入る', /^[A-Z0-9]{4,}$/.test(call), call);
+
+// 設定タブの「Windows 版（デスクトップ）」の欄（preload の橋が本物）
+const appVersion = createRequire(path.join(ROOT, 'package.json'))('./package.json').version;
+const card = await page.evaluate(() => ({
+  hidden: document.querySelector('#desktop-card')?.hidden,
+  version: document.querySelector('#desktop-version')?.textContent ?? '',
+}));
+ok('設定タブに Windows 版の欄が出る', card.hidden === false, JSON.stringify(card));
+ok('欄に exe の版と Web 版の commit が出る', card.version.includes(`版 ${appVersion}`) && /Web 版の取り込み: [0-9a-f]{7}/.test(card.version), card.version);
+await page.locator('#desktop-card').scrollIntoViewIfNeeded();
+await page.click('#btn-desktop-update');
+await page.waitForTimeout(600);
+ok('開発中の起動では「確認しません」と欄に出る', /開発中/.test(await page.textContent('#desktop-update-status')), await page.textContent('#desktop-update-status'));
 await page.fill('#set-callsign', 'JA9TEST');
 await page.dispatchEvent('#set-callsign', 'change');
 await page.waitForTimeout(300);
@@ -105,16 +118,26 @@ const updateProbe = async (tag) => {
     args: [...(packaged ? [] : [ROOT]), `--user-data-dir=${userData}`, '--no-sandbox'],
     env: { ...process.env, CW_UPDATE_TEST: 'portable', CW_UPDATE_API: apiUrl, CW_UPDATE_REPORT: reportFile },
   });
-  await a.firstWindow();
+  const w = await a.firstWindow();
   let text = '';
   for (let i = 0; i < 40 && !text.trim(); i++) { await new Promise((r) => setTimeout(r, 250)); text = readFileSync(reportFile, 'utf8'); }
+  // 欄のボタンからも確認できる（状態は欄に流れる）
+  await w.waitForLoadState('domcontentloaded');
+  await w.click('.tab[data-panel="settings"]');
+  await w.waitForTimeout(200);
+  await w.locator('#desktop-card').scrollIntoViewIfNeeded();
+  await w.click('#btn-desktop-update');
+  await w.waitForFunction(() => !/確認しています/.test(document.querySelector('#desktop-update-status').textContent), null, { timeout: 5000 }).catch(() => {});
+  const inPage = await w.textContent('#desktop-update-status');
   await a.close();
-  return text.trim() ? JSON.parse(text.trim().split('\n')[0]) : null;
+  return { report: text.trim() ? JSON.parse(text.trim().split('\n')[0]) : null, inPage };
 };
 const newer = await updateProbe('v99.0.0');
-ok('新しい版があれば起動時に知らせる（Portable）', newer?.kind === 'available' && newer.latest === '99.0.0' && /example\.com/.test(newer.url), JSON.stringify(newer));
+ok('新しい版があれば起動時に知らせる（Portable）', newer.report?.kind === 'available' && newer.report.latest === '99.0.0' && /example\.com/.test(newer.report.url), JSON.stringify(newer.report));
+ok('欄の「最新版に更新する」でも新しい版の案内が欄に出る', /99\.0\.0/.test(newer.inPage) && /Portable 版/.test(newer.inPage), newer.inPage);
 const same = await updateProbe('v0.0.1');
-ok('古い版しか無ければ何も出さない', same?.kind === 'up-to-date', JSON.stringify(same));
+ok('古い版しか無ければ何も出さない', same.report?.kind === 'up-to-date', JSON.stringify(same.report));
+ok('欄では「最新です」と出る', /最新です/.test(same.inPage), same.inPage);
 api.close();
 
 rmSync(userData, { recursive: true, force: true });
