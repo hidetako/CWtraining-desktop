@@ -12,13 +12,14 @@ const {
 const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const updater = require('./updater');
 
 const APP_HOST = 'cw';
 const APP_ORIGIN = `app://${APP_HOST}`;
 const APP_DIR = path.join(__dirname, '..', 'app');
 const WEB_URL = 'https://hidetako.github.io/CWtraining/';
 const MANUAL_URL = 'https://github.com/hidetako/CWtraining/blob/main/docs/MANUAL.md';
-const RELEASES_URL = 'https://github.com/hidetako/CWtraining-desktop/releases';
+const RELEASES_URL = updater.RELEASES_URL;
 
 // Web Audio を最初のクリックより前から鳴らせるようにする（練習音・サイドトーン）
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -128,6 +129,7 @@ function buildMenu() {
     detail: [
       `Web 版の取り込み: ${info.commit ? info.commit.slice(0, 7) : '不明'}${info.date ? `（${info.date}）` : ''}`,
       `Electron ${process.versions.electron} / Chromium ${process.versions.chrome}`,
+      updater.isPortable() ? 'Portable 版（更新は案内のみ。新しい exe に置き換えてください）' : 'インストーラー版（更新は自動でダウンロードし、再起動時に適用）',
       '',
       '設定と記録はこのパソコンの中だけに保存されます。',
       `保存先: ${app.getPath('userData')}`,
@@ -154,7 +156,15 @@ function buildMenu() {
       submenu: [
         { label: '使い方説明書（ブラウザで開く）', click: () => shell.openExternal(MANUAL_URL) },
         { label: 'Web 版を開く', click: () => shell.openExternal(WEB_URL) },
-        { label: '新しい版を確かめる', click: () => shell.openExternal(RELEASES_URL) },
+        { type: 'separator' },
+        { label: '更新を確認', click: () => updater.checkForUpdates({ manual: true }) },
+        {
+          label: '起動時に更新を確認する',
+          type: 'checkbox',
+          checked: updater.loadSettings().checkOnStartup,
+          click: (item) => updater.saveSettings({ ...updater.loadSettings(), checkOnStartup: item.checked }),
+        },
+        { label: 'ダウンロードページ（Releases）を開く', click: () => shell.openExternal(RELEASES_URL) },
         { type: 'separator' },
         { label: '設定の保存先フォルダーを開く', click: () => shell.openPath(app.getPath('userData')) },
         { type: 'separator' },
@@ -170,6 +180,7 @@ app.whenReady().then(() => {
   allowMedia();
   buildMenu();
   createWindow();
+  updater.scheduleStartupCheck();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 

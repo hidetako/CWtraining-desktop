@@ -86,7 +86,7 @@ jobs:
       - name: 組み立てた物の一覧と Release の説明文
         shell: bash
         run: |
-          ls -la dist/*.exe && cat app/VERSION.json
+          ls -la dist/*.exe dist/latest.yml dist/*.blockmap && cat app/VERSION.json && cat dist/latest.yml
           node -e '
             const v = require("./app/VERSION.json");
             const short = (v.commit || "").slice(0, 7);
@@ -110,6 +110,8 @@ jobs:
           name: CWtraining-windows-${{ steps.ver.outputs.version }}
           path: |
             dist/*.exe
+            dist/latest.yml
+            dist/*.blockmap
             app/VERSION.json
             shots/*.png
           retention-days: 14
@@ -120,6 +122,10 @@ jobs:
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: CW 交信トレーニング ${{ steps.ver.outputs.tag }}
-          files: dist/*.exe
+          # latest.yml と .blockmap は自動更新（electron-updater）が見る
+          files: |
+            dist/*.exe
+            dist/latest.yml
+            dist/*.blockmap
           generate_release_notes: true
           body_path: release-notes.md

@@ -85,6 +85,38 @@ await page.waitForTimeout(300);
 await page.screenshot({ path: path.join(SHOTS, 'desktop-home.png') });
 await app.close();
 
+// ── 更新チェック（Portable の道筋を、偽の GitHub API とファイルへの報告で確かめる） ──
+const { isNewer } = createRequire(import.meta.url)('../src/version.js');
+ok('版の比べ方（1.0.10 > 1.0.9、v 付き・beta 付きも）', isNewer('1.0.10', '1.0.9') && isNewer('v1.1.0', '1.0.5') && !isNewer('1.0.0', '1.0.0') && isNewer('2.0.0-beta.1', '1.9.9'));
+
+const http = await import('node:http');
+const { readFileSync, writeFileSync } = await import('node:fs');
+let fakeTag = 'v99.0.0';
+const api = http.createServer((req, res) => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ tag_name: fakeTag, html_url: `https://example.com/releases/${fakeTag}` })); });
+await new Promise((r) => api.listen(0, '127.0.0.1', r));
+const apiUrl = `http://127.0.0.1:${api.address().port}/latest`;
+
+const updateProbe = async (tag) => {
+  fakeTag = tag;
+  const reportFile = path.join(userData, `update-report-${tag}.txt`);
+  writeFileSync(reportFile, '');
+  const a = await electron.launch({
+    executablePath: packaged ?? electronPath,
+    args: [...(packaged ? [] : [ROOT]), `--user-data-dir=${userData}`, '--no-sandbox'],
+    env: { ...process.env, CW_UPDATE_TEST: 'portable', CW_UPDATE_API: apiUrl, CW_UPDATE_REPORT: reportFile },
+  });
+  await a.firstWindow();
+  let text = '';
+  for (let i = 0; i < 40 && !text.trim(); i++) { await new Promise((r) => setTimeout(r, 250)); text = readFileSync(reportFile, 'utf8'); }
+  await a.close();
+  return text.trim() ? JSON.parse(text.trim().split('\n')[0]) : null;
+};
+const newer = await updateProbe('v99.0.0');
+ok('新しい版があれば起動時に知らせる（Portable）', newer?.kind === 'available' && newer.latest === '99.0.0' && /example\.com/.test(newer.url), JSON.stringify(newer));
+const same = await updateProbe('v0.0.1');
+ok('古い版しか無ければ何も出さない', same?.kind === 'up-to-date', JSON.stringify(same));
+api.close();
+
 rmSync(userData, { recursive: true, force: true });
 console.log('\n失敗:', fails.length ? fails.join(' / ') : 'なし');
 process.exit(fails.length ? 1 : 0);

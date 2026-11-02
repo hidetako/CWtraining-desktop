@@ -1,7 +1,7 @@
 {
   "name": "cwtraining-desktop",
   "productName": "CWtraining",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "CW 交信トレーニング（Windows スタンドアロン版）。Web 版 hidetako/CWtraining を Electron で包んだもの",
   "author": "hidetako (JK0ASS)",
   "license": "MIT",
@@ -26,6 +26,12 @@
     "directories": {
       "buildResources": "build",
       "output": "dist"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "hidetako",
+      "repo": "CWtraining-desktop",
+      "releaseType": "release"
     },
     "files": [
       "src/**/*",
@@ -75,5 +81,8 @@
     "electron": "^45.1.0",
     "electron-builder": "^26.18.0",
     "playwright-core": "^1.64.1"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
   }
 }
